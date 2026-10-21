@@ -1,0 +1,14 @@
+# Python virtual environment (recreate it with setup steps in README)
+.venv/
+
+# Python bytecode caches
+__pycache__/
+*.pyc
+
+# Videos are large; keep them out of Git, but keep the folder
+sample_videos/*
+!sample_videos/.gitkeep
+
+# Generated results; keep the folder
+outputs/*
+!outputs/.gitkeep
