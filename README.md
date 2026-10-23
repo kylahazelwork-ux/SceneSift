@@ -58,3 +58,12 @@ to `outputs/frame.jpg`:
 ```powershell
 python src/video_info.py sample_videos/vtest.avi
 ```
+
+Detect people in every frame and save an annotated video to
+`outputs/detected.mp4` (boxes, confidence scores, and timestamps):
+
+```powershell
+python src/detect_video.py sample_videos/vtest.avi
+```
+
+The first run downloads the YOLO model weights (`yolo26n.pt`, about 5 MB).

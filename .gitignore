@@ -12,3 +12,6 @@ sample_videos/*
 # Generated results; keep the folder
 outputs/*
 !outputs/.gitkeep
+
+# Model weights; YOLO downloads them on first run
+*.pt
