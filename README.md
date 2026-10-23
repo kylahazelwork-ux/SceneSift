@@ -28,3 +28,33 @@ questions about those events with timestamps and video evidence.
 - **A person “crosses the line” when:** The same tracked person’s bottom-middle point moves from one side of the marked line to the other, passing through the line segment. Record the direction so crossings in opposite directions can be distinguished.
 
 - **“Person count” means:** The number of people whose bottom-middle points are inside the marked zone at a specified video timestamp, rather than the total number of different people across the video.
+
+## Setup (Windows, PowerShell)
+
+Requires Python 3.12 or newer and Git.
+
+```powershell
+git clone https://github.com/kylahazelwork-ux/SceneSift.git
+cd SceneSift
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+If activation fails with "running scripts is disabled", run
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then activate again.
+
+Download the sample video (videos are not stored in Git):
+
+```powershell
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/opencv/opencv/4.x/samples/data/vtest.avi -OutFile sample_videos\vtest.avi
+```
+
+## Usage
+
+Print a video's resolution, frame rate, and duration, and save its first frame
+to `outputs/frame.jpg`:
+
+```powershell
+python src/video_info.py sample_videos/vtest.avi
+```
