@@ -67,3 +67,27 @@ python src/detect_video.py sample_videos/vtest.avi
 ```
 
 The first run downloads the YOLO model weights (`yolo26n.pt`, about 5 MB).
+
+Analyze a video: track people, record zone entries and line crossings, and save
+`outputs/events.csv`, `outputs/occupancy.csv`, and an annotated
+`outputs/analyzed.mp4`. The zone and line come from a JSON file:
+
+```powershell
+python src/analyze_video.py sample_videos/vtest.avi config/vtest_regions.json
+```
+
+Ask questions about the analyzed video (answers come from the saved files, so
+the video isn't processed again):
+
+```powershell
+python src/ask.py "When did someone enter the zone?"
+python src/ask.py "When did someone cross the line?"
+python src/ask.py "How many people were in the zone at 0:23?"
+python src/ask.py    # interactive mode; type "quit" to stop
+```
+
+Run the tests:
+
+```powershell
+python -m pytest
+```
