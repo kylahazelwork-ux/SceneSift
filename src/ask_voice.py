@@ -11,7 +11,7 @@ import time
 
 from faster_whisper import WhisperModel
 
-from questions import answer, load_events, load_occupancy
+from questions import answer, load_events, load_occupancy, load_regions
 
 # "base.en" is a small English-only model: fast on a CPU, good enough for
 # short, clear questions. The first run downloads it (about 150 MB).
@@ -34,6 +34,7 @@ def main():
     try:
         events = load_events("outputs/events.csv")
         occupancy = load_occupancy("outputs/occupancy.csv")
+        regions = load_regions("outputs/analysis_info.json")
     except FileNotFoundError:
         print("No analysis found. Run analyze_video.py first.")
         sys.exit(1)
@@ -55,7 +56,7 @@ def main():
         sys.exit(1)
 
     print(f'Heard: "{transcript}"  (transcribed in {seconds:.1f} s)')
-    print(answer(transcript, events, occupancy))
+    print(answer(transcript, events, occupancy, regions))
 
 
 if __name__ == "__main__":

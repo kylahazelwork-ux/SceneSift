@@ -6,6 +6,7 @@ Supported questions:
     "How many people were in the zone at 10 seconds?"
 """
 import csv
+import json
 import re
 
 UNSUPPORTED = (
@@ -97,9 +98,27 @@ def answer_occupancy(occupancy, seconds):
     return f"{count} {person} in the zone at {time:.1f} s."
 
 
-def answer(question, events, occupancy):
-    """Return a text answer to a typed question."""
+def load_regions(path):
+    """Read which zone and line the analysis used, or None if unknown."""
+    try:
+        with open(path) as f:
+            return json.load(f)["regions"]
+    except FileNotFoundError:
+        return None
+
+
+def answer(question, events, occupancy, regions=None):
+    """Return a text answer to a typed question.
+
+    regions, if given, is the zone and line the analysis used. It lets the
+    answer say "no line was set" instead of a misleading "no one crossed".
+    """
     kind, seconds = parse_question(question)
+    if regions is not None:
+        if kind in ("zone_entries", "occupancy") and not regions.get("zone"):
+            return "No zone was set for this analysis, so I can't answer questions about a zone."
+        if kind == "line_crossings" and not regions.get("line"):
+            return "No line was set for this analysis, so I can't answer questions about a line."
     if kind == "zone_entries":
         return answer_zone_entries(events)
     if kind == "line_crossings":

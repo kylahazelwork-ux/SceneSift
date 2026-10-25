@@ -137,3 +137,14 @@ Each entry answers:
   background noise). Then compare a larger model.
 - **Note:** `av` is pinned to 18.1.0 because faster-whisper 1.2.1 uses an
   option that `av` 19 removed.
+
+## 10. Make the zone and line each optional
+
+- **Decision:** An analysis needs a zone, a line, or both. Questions about a
+  part that wasn't set answer "No zone/line was set for this analysis".
+- **Why:** In the first interface test, being forced to draw a line when
+  only the zone mattered was confusing. Saying "no one crossed the line"
+  when no line existed would be a misleading answer: "no data" and "zero
+  results" mean different things.
+- **Alternatives:** Requiring both (simpler, but confusing for users).
+- **Revisit if:** More region types are added (for example, several zones).

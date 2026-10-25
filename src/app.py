@@ -47,14 +47,30 @@ def draw_regions(frame, regions):
     return image
 
 
-def checklist(regions):
-    """Show what's placed and what's still needed before analyzing."""
+def region_problem(regions):
+    """Return why the zone and line can't be analyzed yet, or None if they can."""
     zone, line = len(regions["zone"]), len(regions["line"])
-    zone_mark = "✅" if zone >= 3 else "❌"
-    line_mark = "✅" if line == 2 else "❌"
+    if zone == 0 and line == 0:
+        return "Place a zone, a line, or both."
+    if 0 < zone < 3:
+        return 'The zone needs at least 3 points. Select "Zone" and click more corners, or clear it.'
+    if line == 1:
+        return 'The line needs 2 points. Select "Line" and click its other end, or clear it.'
+    return None
+
+
+def checklist(regions):
+    """Show what's placed. Each part is optional, but at least one is needed."""
+    zone, line = len(regions["zone"]), len(regions["line"])
+
+    def mark(count, needed):
+        if count == 0:
+            return "⬜ not set"
+        return f"✅ {count} points" if count >= needed else f"❌ {count} of {needed}+ points"
+
     return (
-        f"{zone_mark} **Zone:** {zone} points (needs 3 or more)\n\n"
-        f"{line_mark} **Line:** {line} of 2 points (both are needed to analyze)"
+        f"**Zone:** {mark(zone, 3)}  ·  **Line:** {mark(line, 2)}\n\n"
+        "Each is optional: set a zone, a line, or both."
     )
 
 
@@ -111,11 +127,9 @@ def clear(frame, regions, part, video_path):
 def run_analysis(video_path, regions, progress=gr.Progress()):
     if not video_path:
         return "Choose a video first."
-    if len(regions["zone"]) < 3:
-        return 'The zone needs at least 3 points. Select "Zone" above the picture and click its corners.'
-    if len(regions["line"]) != 2:
-        return 'The line needs 2 points. Select "Line" above the picture and click both ends.'
-
+    problem = region_problem(regions)
+    if problem:
+        return problem
 
     CONFIG_DIR.mkdir(exist_ok=True)
     regions_path(video_path).write_text(json.dumps(regions))
@@ -123,12 +137,14 @@ def run_analysis(video_path, regions, progress=gr.Progress()):
     def report(done, total):
         progress(done / total if total else 0, desc=f"Analyzing frame {done} of {total}")
 
+    # analyze() also records the video and regions in outputs/analysis_info.json.
     summary = analyze(video_path, regions, progress=report)
-    ANALYSIS_INFO.write_text(json.dumps({"video": str(video_path), "regions": regions}))
-    return (
-        f"Done: {summary['frames']} frames, {summary['entries']} zone entries, "
-        f"{summary['crossings']} line crossings. Now ask a question below."
-    )
+    found = []
+    if regions["zone"]:
+        found.append(f"{summary['entries']} zone entries")
+    if regions["line"]:
+        found.append(f"{summary['crossings']} line crossings")
+    return f"Done: {summary['frames']} frames, {', '.join(found)}. Now ask a question below."
 
 
 def transcribe_audio(audio_path):
@@ -177,10 +193,13 @@ def ask(text, audio_path, video_path, regions):
 
     events = load_events("outputs/events.csv")
     occupancy = load_occupancy("outputs/occupancy.csv")
-    reply = answer(question, events, occupancy)
+    reply = answer(question, events, occupancy, regions)
 
+    times = evidence_times(question, events)
+    if len(times) > MAX_EVIDENCE_FRAMES:
+        reply += f"\n\n(Showing evidence for the first {MAX_EVIDENCE_FRAMES} of {len(times)}.)"
     gallery = []
-    for seconds, caption in evidence_times(question, events)[:MAX_EVIDENCE_FRAMES]:
+    for seconds, caption in times[:MAX_EVIDENCE_FRAMES]:
         frame = frame_at(VIDEO_OUTPUT, seconds)
         if frame is not None:
             gallery.append((frame, caption))

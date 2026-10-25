@@ -74,3 +74,17 @@ def test_entry_and_occupancy_agree():
     for i, x in enumerate([90, 80, 70], start=1):
         events = detector.update(i / 10, [(1, "person", box_at(x, 50))])
         assert detector.was_inside[1] == bool(events)
+
+
+def test_zone_only_reports_no_crossings():
+    detector = EventDetector(ZONE, None, min_frames=1)
+    detector.update(0.0, [(1, "person", box_at(190, 50))])
+    assert detector.update(0.1, [(1, "person", box_at(210, 50))]) == []
+
+
+def test_line_only_reports_no_entries_and_zero_occupancy():
+    detector = EventDetector(None, LINE, min_frames=1)
+    detector.update(0.0, [(1, "person", box_at(150, 50))])
+    track = [(1, "person", box_at(50, 50))]
+    assert detector.update(0.1, track) == []
+    assert detector.in_zone_count(track) == 0

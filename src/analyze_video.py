@@ -4,6 +4,7 @@ Saves:
     outputs/analyzed.mp4   annotated video with the zone, line, and foot points
     outputs/events.csv     one row per zone entry or line crossing
     outputs/occupancy.csv  number of people in the zone at every frame
+    outputs/analysis_info.json  which video, zone, and line were used
 
 Usage (run from the project root):
     python src/analyze_video.py sample_videos/vtest.avi config/vtest_regions.json
@@ -23,16 +24,20 @@ EVENT_FIELDS = ["time", "track_id", "event", "class", "direction"]
 VIDEO_OUTPUT = "outputs/analyzed.mp4"
 EVENTS_OUTPUT = "outputs/events.csv"
 OCCUPANCY_OUTPUT = "outputs/occupancy.csv"
+INFO_OUTPUT = "outputs/analysis_info.json"
 
 
 def analyze(video_path, regions, progress=None, print_events=False):
     """Analyze a video and save the annotated video, events, and occupancy.
 
     regions is a dict with "zone" (list of [x, y] points) and "line" (two
-    [x, y] points). progress, if given, is called as progress(done, total)
+    [x, y] points). Either one can be empty, but not both. progress, if given, is called as progress(done, total)
     after each frame. Returns a dict summarizing the results.
     """
-    detector = EventDetector(regions["zone"], regions["line"])
+    zone, line = regions.get("zone") or [], regions.get("line") or []
+    if not zone and not line:
+        raise ValueError("Set a zone, a line, or both")
+    detector = EventDetector(zone, line)
 
     model = YOLO("yolo26n.pt")
     cap = cv2.VideoCapture(video_path)
@@ -54,8 +59,7 @@ def analyze(video_path, regions, progress=None, print_events=False):
         cap.release()
         raise RuntimeError(f"Could not create {VIDEO_OUTPUT}")
 
-    zone_points = np.array(regions["zone"], dtype=np.int32)
-    line_a, line_b = (tuple(p) for p in regions["line"])
+    zone_points = np.array(zone, dtype=np.int32) if zone else None
 
     all_events = []
     occupancy = []  # (frame, time, people_in_zone)
@@ -90,18 +94,22 @@ def analyze(video_path, regions, progress=None, print_events=False):
             all_events.extend(events)
 
             # Occupancy: tracks in this frame whose foot point is inside the zone.
-            in_zone = sum(detector.was_inside[t[0]] for t in tracks)
-            occupancy.append((frame_number, round(timestamp, 2), in_zone))
+            in_zone = detector.in_zone_count(tracks)
+            if zone:
+                occupancy.append((frame_number, round(timestamp, 2), in_zone))
 
             # Draw boxes and IDs, then the zone, line, foot points, and counts.
             frame = result.plot(boxes=True, labels=True, conf=False)
-            cv2.polylines(frame, [zone_points], isClosed=True, color=(0, 255, 0), thickness=2)
-            cv2.line(frame, line_a, line_b, color=(0, 0, 255), thickness=2)
+            if zone:
+                cv2.polylines(frame, [zone_points], isClosed=True, color=(0, 255, 0), thickness=2)
+            if line:
+                cv2.line(frame, tuple(line[0]), tuple(line[1]), color=(0, 0, 255), thickness=2)
             for _, _, box in tracks:
                 x, y = bottom_middle(box)
                 cv2.circle(frame, (int(x), int(y)), 4, (0, 255, 255), -1)
+            label = f"{timestamp:.1f} s  in zone: {in_zone}" if zone else f"{timestamp:.1f} s"
             cv2.putText(
-                frame, f"{timestamp:.1f} s  in zone: {in_zone}", (20, 40),
+                frame, label, (20, 40),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2, cv2.LINE_AA,
             )
 
@@ -122,6 +130,11 @@ def analyze(video_path, regions, progress=None, print_events=False):
         csv_writer = csv.writer(f)
         csv_writer.writerow(["frame", "time", "people_in_zone"])
         csv_writer.writerows(occupancy)
+
+    # Record what was analyzed, so answers can say "no line was set" instead of
+    # "no one crossed", and the app can detect out-of-date results.
+    with open(INFO_OUTPUT, "w") as f:
+        json.dump({"video": str(video_path), "regions": {"zone": zone, "line": line}}, f)
 
     return {
         "frames": frame_number,

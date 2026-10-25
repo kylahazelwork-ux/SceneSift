@@ -52,3 +52,17 @@ def test_answer_occupancy_outside_video():
 
 def test_unsupported_question():
     assert answer("Who is the tallest person?", EVENTS, OCCUPANCY).startswith("Sorry")
+
+
+def test_line_question_without_a_line_says_so():
+    # "No one crossed" would be misleading when no line was ever set.
+    regions = {"zone": [[0, 0], [10, 0], [10, 10]], "line": []}
+    assert answer("When did someone cross the line?", EVENTS, OCCUPANCY, regions).startswith(
+        "No line was set"
+    )
+
+
+def test_zone_questions_without_a_zone_say_so():
+    regions = {"zone": [], "line": [[0, 0], [0, 10]]}
+    for question in ["When did someone enter the zone?", "How many in the zone at 10 seconds?"]:
+        assert answer(question, EVENTS, OCCUPANCY, regions).startswith("No zone was set")

@@ -7,7 +7,7 @@ or start an interactive session (type "quit" to stop):
 """
 import sys
 
-from questions import answer, load_events, load_occupancy
+from questions import answer, load_events, load_occupancy, load_regions
 
 EVENTS = "outputs/events.csv"
 OCCUPANCY = "outputs/occupancy.csv"
@@ -17,12 +17,13 @@ def main():
     try:
         events = load_events(EVENTS)
         occupancy = load_occupancy(OCCUPANCY)
+        regions = load_regions("outputs/analysis_info.json")
     except FileNotFoundError:
         print("No analysis found. Run analyze_video.py first.")
         sys.exit(1)
 
     if len(sys.argv) > 1:
-        print(answer(" ".join(sys.argv[1:]), events, occupancy))
+        print(answer(" ".join(sys.argv[1:]), events, occupancy, regions))
         return
 
     while True:
@@ -30,7 +31,7 @@ def main():
         if question.lower() in ("quit", "exit", "q"):
             break
         if question:
-            print(answer(question, events, occupancy))
+            print(answer(question, events, occupancy, regions))
 
 
 if __name__ == "__main__":
