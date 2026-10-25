@@ -111,8 +111,8 @@ Each entry answers:
 ## 8. Require 5 frames inside before counting a zone entry
 
 - **Decision:** A zone entry only counts after the person's foot point stays
-  inside for 5 frames in a row (0.5 s at 10 fps). The reported time is the
-  first of those frames.
+  inside for 5 frames in a row (0.5 s at 10 fps). The reported time is when
+  the entry is confirmed, so it always agrees with the occupancy count.
 - **Why:** The Step 7 review showed people near the zone edge creating
   entries without walking in, because their boxes jitter. Testing 1, 3, 5,
   10, and 15 frames showed 5 removed the questionable entries in the reviewed

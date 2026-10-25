@@ -16,7 +16,7 @@ class EventDetector:
         self.min_frames = min_frames
         self.last_point = {}  # track_id -> bottom-middle point in the previous frame
         self.was_inside = {}  # track_id -> confirmed inside the zone?
-        self.pending = {}     # track_id -> (frames on the new side, time it started)
+        self.pending = {}     # track_id -> frames in a row on the new side
 
     def update(self, timestamp, tracks):
         """Process one frame and return a list of events that happened in it.
@@ -41,18 +41,18 @@ class EventDetector:
                 self.pending.pop(track_id, None)
             else:
                 # On the other side: count frames in a row.
-                count, start_time = self.pending.get(track_id, (0, timestamp))
-                count += 1
+                count = self.pending.get(track_id, 0) + 1
                 if count < self.min_frames:
-                    self.pending[track_id] = (count, start_time)
+                    self.pending[track_id] = count
                 else:
                     # Stayed long enough, so the change is real.
                     self.was_inside[track_id] = inside
                     self.pending.pop(track_id, None)
                     if inside:
                         events.append({
-                            # Report when they stepped in, not when it was confirmed.
-                            "time": round(start_time, 2),
+                            # Report the confirmation time, so entries always
+                            # agree with occupancy (which uses confirmed state).
+                            "time": round(timestamp, 2),
                             "track_id": track_id,
                             "event": "zone_entry",
                             "class": class_name,

@@ -56,11 +56,21 @@ def test_jitter_at_edge_does_not_create_entry():
     assert events == []
 
 
-def test_entry_after_min_frames_inside_reports_first_frame_time():
+def test_entry_after_min_frames_inside_reports_confirmation_time():
     detector = EventDetector(ZONE, LINE, min_frames=3)
     detector.update(0.0, [(1, "person", box_at(150, 50))])  # outside
     assert detector.update(0.1, [(1, "person", box_at(90, 50))]) == []
     assert detector.update(0.2, [(1, "person", box_at(80, 50))]) == []
     events = detector.update(0.3, [(1, "person", box_at(70, 50))])
     assert len(events) == 1
-    assert events[0]["time"] == 0.1  # when they stepped in
+    assert events[0]["time"] == 0.3  # when the entry was confirmed
+
+
+def test_entry_and_occupancy_agree():
+    # Regression test: an entry must be counted as inside in the same frame,
+    # or "when did they enter?" and "how many were inside?" contradict.
+    detector = EventDetector(ZONE, LINE, min_frames=3)
+    detector.update(0.0, [(1, "person", box_at(150, 50))])
+    for i, x in enumerate([90, 80, 70], start=1):
+        events = detector.update(i / 10, [(1, "person", box_at(x, 50))])
+        assert detector.was_inside[1] == bool(events)

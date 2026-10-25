@@ -73,8 +73,14 @@ edge can trigger events without moving. This was predicted in decision #2.
 
 `EventDetector` now only counts a zone entry after the foot point stays
 inside for `min_frames` frames in a row. If it goes back outside first, the
-count resets. The entry time reported is the first of those frames, when the
-person actually stepped in.
+count resets. The entry time reported is when the entry is confirmed (the
+last of those frames), about 0.4 s after the person stepped in.
+
+**Why the confirmation time:** I first reported the step-in time, but then
+"When did someone enter?" and "How many were in the zone?" disagreed for
+0.4 s, because occupancy only counts confirmed entries. I found this in
+Step 8 by comparing the two answers against each other. Reporting the
+confirmation time keeps them consistent; a regression test now checks it.
 
 To choose the value, I saved the tracks once and replayed only the event
 logic with different settings, which took seconds instead of re-running
