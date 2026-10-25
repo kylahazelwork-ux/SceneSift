@@ -92,3 +92,18 @@ Each entry answers:
 - **Revisit if:** Step 7 shows many missed people (for example, small or
   partly hidden people far from the camera). Then compare a larger model or
   adjust the confidence threshold.
+
+## 7. Place the zone and line away from the lamppost and frame edges
+
+- **Decision:** For `vtest.avi`, the zone is a section of road to the right of
+  the lamppost, and the line crosses the walkway on the left. Positions are
+  stored in `config/vtest_regions.json`.
+- **Why:** Tracking IDs often break near the lamppost and at the frame edges
+  (see `tracking_errors.md`). Keeping the zone and line away from those spots
+  reduces missed entries and crossings, while still covering places where
+  people walk.
+- **Alternatives:** Hard-coding the coordinates in Python. Storing them in a
+  JSON file means each video can have its own regions, and the interface in
+  Step 10 can save them without code changes.
+- **Revisit if:** Step 7 shows many missed events, or a different video is
+  used.

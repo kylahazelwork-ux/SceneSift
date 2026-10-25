@@ -1,3 +1,4 @@
 opencv-python==5.0.0.93
 ultralytics==8.4.184
 lap==0.5.13
+pytest==9.1.1
