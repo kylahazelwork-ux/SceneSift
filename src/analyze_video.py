@@ -20,38 +20,39 @@ from events import EventDetector
 from geometry import bottom_middle
 
 EVENT_FIELDS = ["time", "track_id", "event", "class", "direction"]
+VIDEO_OUTPUT = "outputs/analyzed.mp4"
+EVENTS_OUTPUT = "outputs/events.csv"
+OCCUPANCY_OUTPUT = "outputs/occupancy.csv"
 
 
-def main():
-    if len(sys.argv) != 3:
-        print("Usage: python src/analyze_video.py <path-to-video> <path-to-regions-json>")
-        sys.exit(1)
-    video_path, regions_path = sys.argv[1], sys.argv[2]
+def analyze(video_path, regions, progress=None, print_events=False):
+    """Analyze a video and save the annotated video, events, and occupancy.
 
-    with open(regions_path) as f:
-        regions = json.load(f)
+    regions is a dict with "zone" (list of [x, y] points) and "line" (two
+    [x, y] points). progress, if given, is called as progress(done, total)
+    after each frame. Returns a dict summarizing the results.
+    """
     detector = EventDetector(regions["zone"], regions["line"])
 
     model = YOLO("yolo26n.pt")
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print(f"Error: could not open video: {video_path}")
-        sys.exit(1)
+        raise FileNotFoundError(f"Could not open video: {video_path}")
 
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     if fps <= 0:
         cap.release()
         raise ValueError("Video has no valid frame rate")
 
-    video_output = "outputs/analyzed.mp4"
     writer = cv2.VideoWriter(
-        video_output, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
+        VIDEO_OUTPUT, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
     )
     if not writer.isOpened():
         cap.release()
-        raise RuntimeError(f"Could not create {video_output}")
+        raise RuntimeError(f"Could not create {VIDEO_OUTPUT}")
 
     zone_points = np.array(regions["zone"], dtype=np.int32)
     line_a, line_b = (tuple(p) for p in regions["line"])
@@ -82,9 +83,10 @@ def main():
                     tracks.append((track_id, result.names[class_id], box))
 
             events = detector.update(timestamp, tracks)
-            for event in events:
-                print(f"{event['time']:6.1f} s  ID {event['track_id']:>3}  "
-                      f"{event['event']}  {event['direction'] or ''}")
+            if print_events:
+                for event in events:
+                    print(f"{event['time']:6.1f} s  ID {event['track_id']:>3}  "
+                          f"{event['event']}  {event['direction'] or ''}")
             all_events.extend(events)
 
             # Occupancy: tracks in this frame whose foot point is inside the zone.
@@ -105,25 +107,47 @@ def main():
 
             writer.write(frame)
             frame_number += 1
+            if progress:
+                progress(frame_number, total_frames)
     finally:
         cap.release()
         writer.release()
 
-    with open("outputs/events.csv", "w", newline="") as f:
+    with open(EVENTS_OUTPUT, "w", newline="") as f:
         csv_writer = csv.DictWriter(f, fieldnames=EVENT_FIELDS)
         csv_writer.writeheader()
         csv_writer.writerows(all_events)
 
-    with open("outputs/occupancy.csv", "w", newline="") as f:
+    with open(OCCUPANCY_OUTPUT, "w", newline="") as f:
         csv_writer = csv.writer(f)
         csv_writer.writerow(["frame", "time", "people_in_zone"])
         csv_writer.writerows(occupancy)
 
-    entries = sum(e["event"] == "zone_entry" for e in all_events)
-    crossings = sum(e["event"] == "line_crossing" for e in all_events)
-    print(f"\nProcessed {frame_number} frames")
-    print(f"Zone entries: {entries}, line crossings: {crossings}")
-    print(f"Saved {video_output}, outputs/events.csv, outputs/occupancy.csv")
+    return {
+        "frames": frame_number,
+        "entries": sum(e["event"] == "zone_entry" for e in all_events),
+        "crossings": sum(e["event"] == "line_crossing" for e in all_events),
+    }
+
+
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python src/analyze_video.py <path-to-video> <path-to-regions-json>")
+        sys.exit(1)
+    video_path, regions_path = sys.argv[1], sys.argv[2]
+
+    with open(regions_path) as f:
+        regions = json.load(f)
+
+    try:
+        summary = analyze(video_path, regions, print_events=True)
+    except FileNotFoundError as error:
+        print(f"Error: {error}")
+        sys.exit(1)
+
+    print(f"\nProcessed {summary['frames']} frames")
+    print(f"Zone entries: {summary['entries']}, line crossings: {summary['crossings']}")
+    print(f"Saved {VIDEO_OUTPUT}, {EVENTS_OUTPUT}, {OCCUPANCY_OUTPUT}")
 
 
 if __name__ == "__main__":
