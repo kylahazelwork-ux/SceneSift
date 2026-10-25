@@ -15,3 +15,7 @@ outputs/*
 
 # Model weights; YOLO downloads them on first run
 *.pt
+
+# Recorded questions (personal voice recordings)
+sample_audio/*
+!sample_audio/.gitkeep

@@ -91,3 +91,13 @@ Run the tests:
 ```powershell
 python -m pytest
 ```
+
+Ask a spoken question from an audio recording (transcribed locally with
+faster-whisper; the first run downloads the `base.en` model, about 150 MB):
+
+```powershell
+python src/ask_voice.py sample_audio/question.m4a
+```
+
+Record questions with the Windows Sound Recorder app and save them in
+`sample_audio/`. Recordings are not stored in Git.

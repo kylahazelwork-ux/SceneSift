@@ -122,3 +122,18 @@ Each entry answers:
 - **Revisit if:** The video has a different frame rate. The setting is in
   frames, so the same value means a different amount of time at 30 fps.
   Converting it to seconds would make it independent of frame rate.
+
+## 9. Transcribe speech locally with faster-whisper (`base.en`)
+
+- **Decision:** Spoken questions are transcribed on the computer with
+  faster-whisper's small English model, then passed to the same `answer()`
+  function used for typed questions.
+- **Why:** It's free, needs no account, and keeps voice recordings on the
+  computer. Short questions transcribe in about 1 second on a CPU. Reusing
+  `answer()` means speech adds no new question logic.
+- **Alternatives:** A cloud speech API (needs an account, sends audio off the
+  computer, costs money). Larger Whisper models are more accurate but slower.
+- **Revisit if:** Transcripts are often wrong (for example, with accents or
+  background noise). Then compare a larger model.
+- **Note:** `av` is pinned to 18.1.0 because faster-whisper 1.2.1 uses an
+  option that `av` 19 removed.
