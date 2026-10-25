@@ -144,7 +144,8 @@ def run_analysis(video_path, regions, progress=gr.Progress()):
         found.append(f"{summary['entries']} zone entries")
     if regions["line"]:
         found.append(f"{summary['crossings']} line crossings")
-    return f"Done: {summary['frames']} frames, {', '.join(found)}. Now ask a question below."
+    return (f"Done on {summary['device'].upper()}: {summary['frames']} frames, "
+            f"{', '.join(found)}. Now ask a question below.")
 
 
 def transcribe_audio(audio_path):

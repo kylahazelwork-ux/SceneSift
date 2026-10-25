@@ -44,6 +44,15 @@ python -m pip install -r requirements.txt
 If activation fails with "running scripts is disabled", run
 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, then activate again.
 
+Optional, for an NVIDIA GPU: install the CUDA build of PyTorch. SceneSift uses
+the GPU automatically when PyTorch can see one (about 1.7x faster; see
+`docs/benchmarks.md`). Pick the build that matches the CUDA version shown by
+`nvidia-smi`, for example:
+
+```powershell
+python -m pip install --force-reinstall --no-deps torch==2.14.1+cu132 torchvision==0.29.1+cu132 --index-url https://download.pytorch.org/whl/cu132
+```
+
 Download the sample video (videos are not stored in Git):
 
 ```powershell

@@ -148,3 +148,14 @@ Each entry answers:
   results" mean different things.
 - **Alternatives:** Requiring both (simpler, but confusing for users).
 - **Revisit if:** More region types are added (for example, several zones).
+
+## 11. Use the GPU automatically when one is available
+
+- **Decision:** Run YOLO on the NVIDIA GPU when PyTorch can see one, at full
+  640 px input. Otherwise use the CPU.
+- **Why:** It was about 1.7x faster with exactly the same events (see
+  `benchmarks.md`). It needs no code changes for computers without a GPU.
+- **Alternatives:** 320 px input was about as fast on any computer but
+  missed 4 of 39 events. Processing every 2nd frame missed 6 of 39.
+- **Revisit if:** SceneSift must run fast on computers without a GPU. Then
+  320 px input is the best tradeoff measured.

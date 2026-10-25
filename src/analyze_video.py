@@ -15,6 +15,7 @@ import sys
 
 import cv2
 import numpy as np
+import torch
 from ultralytics import YOLO
 
 from events import EventDetector
@@ -25,6 +26,9 @@ VIDEO_OUTPUT = "outputs/analyzed.mp4"
 EVENTS_OUTPUT = "outputs/events.csv"
 OCCUPANCY_OUTPUT = "outputs/occupancy.csv"
 INFO_OUTPUT = "outputs/analysis_info.json"
+# Use the NVIDIA GPU when PyTorch can see one: about 1.7x faster with identical
+# events (see docs/benchmarks.md). Otherwise fall back to the CPU.
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def analyze(video_path, regions, progress=None, print_events=False):
@@ -73,7 +77,7 @@ def analyze(video_path, regions, progress=None, print_events=False):
             timestamp = frame_number / fps
 
             result = model.track(
-                frame, classes=[0], conf=0.25, verbose=False,
+                frame, classes=[0], conf=0.25, device=DEVICE, verbose=False,
                 persist=True, tracker="bytetrack.yaml",
             )[0]
 
@@ -140,6 +144,7 @@ def analyze(video_path, regions, progress=None, print_events=False):
         "frames": frame_number,
         "entries": sum(e["event"] == "zone_entry" for e in all_events),
         "crossings": sum(e["event"] == "line_crossing" for e in all_events),
+        "device": DEVICE,
     }
 
 
@@ -158,7 +163,7 @@ def main():
         print(f"Error: {error}")
         sys.exit(1)
 
-    print(f"\nProcessed {summary['frames']} frames")
+    print(f"\nProcessed {summary['frames']} frames on {summary['device'].upper()}")
     print(f"Zone entries: {summary['entries']}, line crossings: {summary['crossings']}")
     print(f"Saved {VIDEO_OUTPUT}, {EVENTS_OUTPUT}, {OCCUPANCY_OUTPUT}")
 
