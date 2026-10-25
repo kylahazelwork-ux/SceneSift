@@ -107,3 +107,18 @@ Each entry answers:
   Step 10 can save them without code changes.
 - **Revisit if:** Step 7 shows many missed events, or a different video is
   used.
+
+## 8. Require 5 frames inside before counting a zone entry
+
+- **Decision:** A zone entry only counts after the person's foot point stays
+  inside for 5 frames in a row (0.5 s at 10 fps). The reported time is the
+  first of those frames.
+- **Why:** The Step 7 review showed people near the zone edge creating
+  entries without walking in, because their boxes jitter. Testing 1, 3, 5,
+  10, and 15 frames showed 5 removed the questionable entries in the reviewed
+  window without losing real ones (see `event_review.md`).
+- **Alternatives:** 3 frames barely helped. 15 frames started dropping real
+  entries.
+- **Revisit if:** The video has a different frame rate. The setting is in
+  frames, so the same value means a different amount of time at 30 fps.
+  Converting it to seconds would make it independent of frame rate.

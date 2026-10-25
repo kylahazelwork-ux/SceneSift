@@ -8,11 +8,15 @@ class EventDetector:
     Call update() once per frame, in order.
     """
 
-    def __init__(self, zone, line):
+    def __init__(self, zone, line, min_frames=5):
         self.zone = zone
         self.line_a, self.line_b = line
+        # A zone change only counts after this many frames in a row on the new
+        # side. This stops boxes that jitter across the edge from creating entries.
+        self.min_frames = min_frames
         self.last_point = {}  # track_id -> bottom-middle point in the previous frame
-        self.was_inside = {}  # track_id -> was that point inside the zone?
+        self.was_inside = {}  # track_id -> confirmed inside the zone?
+        self.pending = {}     # track_id -> (frames on the new side, time it started)
 
     def update(self, timestamp, tracks):
         """Process one frame and return a list of events that happened in it.
@@ -26,19 +30,34 @@ class EventDetector:
             point = bottom_middle(box)
             inside = point_in_zone(point, self.zone)
 
-            # Zone entry: outside in the previous frame, inside now.
-            # A track seen for the first time has no previous frame, so it
-            # can't enter (someone first detected inside doesn't count).
-            if inside and self.was_inside.get(track_id) is False:
-                events.append({
-                    "time": round(timestamp, 2),
-                    "track_id": track_id,
-                    "event": "zone_entry",
-                    "class": class_name,
-                    "direction": None,
-                })
-
-            self.was_inside[track_id] = inside
+            # Zone entry: confirmed outside, then inside for min_frames in a row.
+            confirmed = self.was_inside.get(track_id)
+            if confirmed is None:
+                # First sighting: accept the current side without an event
+                # (someone first detected inside doesn't count as entering).
+                self.was_inside[track_id] = inside
+            elif inside == confirmed:
+                # Back on the confirmed side: cancel any change in progress.
+                self.pending.pop(track_id, None)
+            else:
+                # On the other side: count frames in a row.
+                count, start_time = self.pending.get(track_id, (0, timestamp))
+                count += 1
+                if count < self.min_frames:
+                    self.pending[track_id] = (count, start_time)
+                else:
+                    # Stayed long enough, so the change is real.
+                    self.was_inside[track_id] = inside
+                    self.pending.pop(track_id, None)
+                    if inside:
+                        events.append({
+                            # Report when they stepped in, not when it was confirmed.
+                            "time": round(start_time, 2),
+                            "track_id": track_id,
+                            "event": "zone_entry",
+                            "class": class_name,
+                            "direction": None,
+                        })
 
             # Line crossing: the path from the previous point to this one
             # passes through the line segment.

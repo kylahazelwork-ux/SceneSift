@@ -69,14 +69,39 @@ frame on the other side of an edge counts as an event, with no tolerance.
 Detection boxes jitter by a few pixels every frame, so anyone close to an
 edge can trigger events without moving. This was predicted in decision #2.
 
-## Possible fixes (not done yet)
+## Fix: require several frames inside before counting an entry
 
-- **Require several frames:** only count an entry after the foot point stays
-  inside for, say, 3 frames (0.3 s at 10 fps).
-- **Add a buffer band:** for the line, only count a crossing once the person
-  is clearly past it (a few pixels beyond), not just touching it.
-- **Ignore quick reversals:** don't count a crossing that is undone within a
-  short time.
+`EventDetector` now only counts a zone entry after the foot point stays
+inside for `min_frames` frames in a row. If it goes back outside first, the
+count resets. The entry time reported is the first of those frames, when the
+person actually stepped in.
+
+To choose the value, I saved the tracks once and replayed only the event
+logic with different settings, which took seconds instead of re-running
+tracking each time.
+
+| `min_frames` | Time at 10 fps | Entries (whole video) | Effect in the reviewed window |
+|---|---|---|---|
+| 1 (old rule) | 0.1 s | 33 | baseline |
+| 3 | 0.3 s | 30 | no change |
+| **5 (chosen)** | **0.5 s** | **25** | removed event 1 (unsure) and event 3 (edge case); kept all 5 real entries |
+| 10 | 1.0 s | 23 | no further change |
+| 15 | 1.5 s | 20 | removed event 4, a real entry |
+
+**Result:** 5 frames removed the two questionable entries without losing any
+real ones. Higher values start dropping real entries.
+
+**What it didn't fix:** events 8 and 9 (IDs 17 and 6 at 22.7–22.8 s) remain
+even at 15 frames. Those people didn't jitter; they stood on the zone's top
+edge for several seconds. That's a zone placement problem: the edge runs
+through a spot where people wait. Moving the zone's top edge would fix it.
+
+## Remaining fixes (not done yet)
+
+- **Line crossings:** apply the same idea. Only count a crossing once the
+  person stays on the new side for several frames, so stopping on the line
+  and turning back (events 12 and 13) doesn't count twice.
+- **Zone placement:** move the zone's top edge away from where people stand.
 
 Each fix trades responsiveness for stability: it removes false events but
-adds a small delay, and could miss someone who steps in and out quickly.
+adds a short delay, and could miss someone who steps in and out quickly.

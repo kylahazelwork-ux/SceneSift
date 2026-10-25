@@ -10,7 +10,7 @@ def box_at(x, y):
 
 
 def test_entry_when_moving_from_outside_to_inside():
-    detector = EventDetector(ZONE, LINE)
+    detector = EventDetector(ZONE, LINE, min_frames=1)
     assert detector.update(0.0, [(1, "person", box_at(150, 50))]) == []
     events = detector.update(0.1, [(1, "person", box_at(50, 50))])
     assert len(events) == 1
@@ -20,7 +20,7 @@ def test_entry_when_moving_from_outside_to_inside():
 
 
 def test_no_repeat_entry_while_staying_inside():
-    detector = EventDetector(ZONE, LINE)
+    detector = EventDetector(ZONE, LINE, min_frames=1)
     detector.update(0.0, [(1, "person", box_at(150, 50))])
     detector.update(0.1, [(1, "person", box_at(50, 50))])
     assert detector.update(0.2, [(1, "person", box_at(60, 50))]) == []
@@ -45,3 +45,22 @@ def test_line_crossing_right_to_left():
     detector.update(0.0, [(1, "person", box_at(210, 50))])
     events = detector.update(0.1, [(1, "person", box_at(190, 50))])
     assert events[0]["direction"] == "right_to_left"
+
+
+def test_jitter_at_edge_does_not_create_entry():
+    detector = EventDetector(ZONE, LINE)  # default: 5 frames in a row
+    events = []
+    # Foot point wobbles across the zone's right edge (x = 100) every frame.
+    for i, x in enumerate([102, 98, 102, 98, 99, 102, 98]):
+        events += detector.update(i / 10, [(1, "person", box_at(x, 50))])
+    assert events == []
+
+
+def test_entry_after_min_frames_inside_reports_first_frame_time():
+    detector = EventDetector(ZONE, LINE, min_frames=3)
+    detector.update(0.0, [(1, "person", box_at(150, 50))])  # outside
+    assert detector.update(0.1, [(1, "person", box_at(90, 50))]) == []
+    assert detector.update(0.2, [(1, "person", box_at(80, 50))]) == []
+    events = detector.update(0.3, [(1, "person", box_at(70, 50))])
+    assert len(events) == 1
+    assert events[0]["time"] == 0.1  # when they stepped in
